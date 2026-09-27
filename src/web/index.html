@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f8fa" />
+    <title>Video Chops Studio</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%233b73c4'/%3E%3Cpath d='m14 11 16 9-16 9z' fill='white'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar" aria-label="Video library">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"
+            ><svg viewBox="0 0 24 24">
+              <rect x="3" y="5" width="18" height="14" rx="3" />
+              <path d="m10 9 5 3-5 3z" /></svg
+          ></span>
+          <span>Video Chops <span class="brand-light">Studio</span></span>
+        </div>
+        <button class="button primary refresh" id="refresh" type="button">
+          <span aria-hidden="true">↻</span> Refresh files
+        </button>
+        <div class="library-heading">
+          <h2>Source videos</h2>
+          <span id="file-count" class="count">0</span>
+        </div>
+        <code class="folder-path">data/input/</code>
+        <div id="files-loading" class="library-message">
+          Reading your video folder…
+        </div>
+        <div id="files-empty" class="library-message" hidden>
+          Add a video to <strong>data/input/</strong>, then refresh to get
+          started.<small>MP4, MOV, WebM, MKV, M4V, AVI</small>
+        </div>
+        <ul id="file-list" class="file-list"></ul>
+        <div class="sidebar-foot">
+          <span class="local-dot" aria-hidden="true"></span>
+          <div>
+            Local workspace<small>Your videos stay on this computer.</small>
+          </div>
+          <button class="button shutdown" id="shutdown" type="button">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v9M17 7a8 8 0 1 1-10 0" />
+            </svg>
+            <span id="shutdown-label">Shut down studio</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <h1 class="sr-only">Video editor</h1>
+        <div id="notice" class="notice" role="status" hidden></div>
+        <div id="empty-workspace" class="empty-workspace">
+          <div class="empty-symbol" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <rect x="5" y="9" width="38" height="30" rx="5" />
+              <path d="m20 17 12 7-12 7zM5 18h8M5 30h8M35 18h8M35 30h8" />
+            </svg>
+          </div>
+          <h2>A little less footage.<br />A better video.</h2>
+          <p>Select a video from the sidebar to start editing.</p>
+          <div class="empty-workflow">
+            <span>Crop the frame</span><span>Trim the ends</span
+            ><span>Cut the rest</span>
+          </div>
+          <p class="empty-path">
+            Sources in <code>data/input/</code
+            ><span aria-hidden="true"> → </span>Exports in
+            <code>data/output/</code>
+          </p>
+        </div>
+
+        <div class="workspace" id="workspace" hidden>
+          <div class="editing-column" id="editing-column">
+            <div class="preview-pair" id="preview-pair">
+              <section class="preview-panel" aria-label="Video preview">
+                <div class="panel-heading">
+                  <div class="canvas-heading">
+                    <h2 id="preview-heading">Preview</h2>
+                    <span
+                      class="aspect-tag"
+                      id="source-aspect-label"
+                      aria-label="Source aspect ratio"
+                    ></span>
+                  </div>
+                  <div class="segmented" id="single-preview-controls">
+                    <button id="view-source" aria-pressed="true">
+                      Edit crop</button
+                    ><button id="view-result" aria-pressed="false">
+                      Cropped preview
+                    </button>
+                  </div>
+                  <div
+                    class="region-draw-actions"
+                    id="region-draw-actions"
+                    hidden
+                  >
+                    <button
+                      class="button small region-one"
+                      id="draw-region-1"
+                      aria-pressed="false"
+                    >
+                      Draw 1
+                    </button>
+                    <button
+                      class="button small region-two"
+                      id="draw-region-2"
+                      aria-pressed="false"
+                    >
+                      Draw 2
+                    </button>
+                  </div>
+                </div>
+                <div class="video-stage" id="video-stage">
+                  <div class="video-frame" id="video-frame">
+                    <video id="video" playsinline preload="auto"></video>
+                    <div
+                      class="crop-box"
+                      id="crop-box"
+                      aria-label="Crop area. Drag to move, or use the crop position fields."
+                    >
+                      <span class="crop-grid" aria-hidden="true"></span>
+                      <span class="crop-size" id="crop-size"></span>
+                      <button
+                        class="crop-handle nw"
+                        data-corner="nw"
+                        aria-label="Resize crop from top left"
+                      ></button>
+                      <button
+                        class="crop-handle ne"
+                        data-corner="ne"
+                        aria-label="Resize crop from top right"
+                      ></button>
+                      <button
+                        class="crop-handle sw"
+                        data-corner="sw"
+                        aria-label="Resize crop from bottom left"
+                      ></button>
+                      <button
+                        class="crop-handle se"
+                        data-corner="se"
+                        aria-label="Resize crop from bottom right"
+                      ></button>
+                    </div>
+                    <div
+                      class="crop-box source-region region-one"
+                      id="source-region-1"
+                      aria-label="Source region 1"
+                      hidden
+                    >
+                      <span class="region-badge" aria-hidden="true">1</span>
+                      <button
+                        class="crop-handle nw"
+                        data-corner="nw"
+                        aria-label="Resize source region 1 from top left"
+                      ></button>
+                      <button
+                        class="crop-handle ne"
+                        data-corner="ne"
+                        aria-label="Resize source region 1 from top right"
+                      ></button>
+                      <button
+                        class="crop-handle sw"
+                        data-corner="sw"
+                        aria-label="Resize source region 1 from bottom left"
+                      ></button>
+                      <button
+                        class="crop-handle se"
+                        data-corner="se"
+                        aria-label="Resize source region 1 from bottom right"
+                      ></button>
+                    </div>
+                    <div
+                      class="crop-box source-region region-two"
+                      id="source-region-2"
+                      aria-label="Source region 2"
+                      hidden
+                    >
+                      <span class="region-badge" aria-hidden="true">2</span>
+                      <button
+                        class="crop-handle nw"
+                        data-corner="nw"
+                        aria-label="Resize source region 2 from top left"
+                      ></button>
+                      <button
+                        class="crop-handle ne"
+                        data-corner="ne"
+                        aria-label="Resize source region 2 from top right"
+                      ></button>
+                      <button
+                        class="crop-handle sw"
+                        data-corner="sw"
+                        aria-label="Resize source region 2 from bottom left"
+                      ></button>
+                      <button
+                        class="crop-handle se"
+                        data-corner="se"
+                        aria-label="Resize source region 2 from bottom right"
+                      ></button>
+                    </div>
+                  </div>
+                  <div
+                    class="preview-loading"
+                    id="preview-loading"
+                    role="status"
+                  >
+                    Preparing a browser preview…<small
+                      >Large videos may take a moment.</small
+                    >
+                  </div>
+                </div>
+                <div class="transport">
+                  <button
+                    class="button icon-button play-button"
+                    id="play"
+                    aria-label="Play video"
+                    title="Play / pause (Space)"
+                    disabled
+                  >
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path id="play-icon" d="m8 5 11 7-11 7z" />
+                    </svg>
+                  </button>
+                  <span class="timecode"
+                    ><span id="current-time">00:00.00</span
+                    ><span class="muted"> / </span
+                    ><span id="source-duration" class="muted"
+                      >00:00.00</span
+                    ></span
+                  >
+                  <label class="preview-cuts"
+                    ><input type="checkbox" id="preview-cuts" checked /> Skip
+                    removed sections</label
+                  >
+                  <label class="sr-only" for="speed">Playback speed</label
+                  ><select id="speed" class="speed-select">
+                    <option value="0.5">0.5×</option>
+                    <option value="1" selected>1×</option>
+                    <option value="1.5">1.5×</option>
+                    <option value="2">2×</option>
+                  </select>
+                </div>
+              </section>
+              <section
+                class="output-panel"
+                id="output-panel"
+                aria-label="Composed video preview"
+                hidden
+              >
+                <div class="panel-heading">
+                  <h2>Output</h2>
+                  <span
+                    class="aspect-tag"
+                    id="output-aspect-label"
+                    aria-label="Output aspect ratio"
+                    >9:16</span
+                  >
+                </div>
+                <div class="video-stage output-stage" id="output-stage">
+                  <div class="output-frame" id="output-frame">
+                    <canvas
+                      id="output-canvas"
+                      aria-label="Combined video output"
+                    ></canvas>
+                    <div
+                      class="output-region region-one"
+                      id="output-region-1"
+                      tabindex="0"
+                      role="group"
+                      aria-label="Output region 1. Drag or use arrow keys to move."
+                    >
+                      <span class="region-badge" aria-hidden="true">1</span>
+                      <button
+                        class="crop-handle nw"
+                        data-corner="nw"
+                        aria-label="Resize output region 1 from top left"
+                      ></button>
+                      <button
+                        class="crop-handle ne"
+                        data-corner="ne"
+                        aria-label="Resize output region 1 from top right"
+                      ></button>
+                      <button
+                        class="crop-handle sw"
+                        data-corner="sw"
+                        aria-label="Resize output region 1 from bottom left"
+                      ></button>
+                      <button
+                        class="crop-handle se"
+                        data-corner="se"
+                        aria-label="Resize output region 1 from bottom right"
+                      ></button>
+                    </div>
+                    <div
+                      class="output-region region-two"
+                      id="output-region-2"
+                      tabindex="0"
+                      role="group"
+                      aria-label="Output region 2. Drag or use arrow keys to move."
+                    >
+                      <span class="region-badge" aria-hidden="true">2</span>
+                      <button
+                        class="crop-handle nw"
+                        data-corner="nw"
+                        aria-label="Resize output region 2 from top left"
+                      ></button>
+                      <button
+                        class="crop-handle ne"
+                        data-corner="ne"
+                        aria-label="Resize output region 2 from top right"
+                      ></button>
+                      <button
+                        class="crop-handle sw"
+                        data-corner="sw"
+                        aria-label="Resize output region 2 from bottom left"
+                      ></button>
+                      <button
+                        class="crop-handle se"
+                        data-corner="se"
+                        aria-label="Resize output region 2 from bottom right"
+                      ></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="transport output-transport">
+                  <button class="button primary" id="output-play" disabled>
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path id="output-play-icon" d="m8 5 11 7-11 7z" />
+                    </svg>
+                    <span id="output-play-label">Play output</span>
+                  </button>
+                  <span class="timecode"
+                    ><span id="output-current-time">00:00.00</span
+                    ><span class="muted"> / </span
+                    ><span id="output-preview-duration" class="muted"
+                      >00:00.00</span
+                    ></span
+                  >
+                </div>
+                <p class="sr-only" id="composition-hint" role="status">
+                  Move a region or drag a corner to shrink it. Maximum size:
+                  100%.
+                </p>
+              </section>
+            </div>
+
+            <section class="timeline-panel" aria-label="Video timeline">
+              <div class="panel-heading">
+                <div class="heading-pair">
+                  <h2>Timeline</h2>
+                  <span id="kept-summary" class="muted"></span>
+                </div>
+                <div class="timeline-actions">
+                  <button
+                    class="button small"
+                    id="split"
+                    title="Split at playhead (S)"
+                  >
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="6" cy="6" r="3" />
+                      <circle cx="6" cy="18" r="3" />
+                      <path d="m8 8 12 12M8 16 20 4" />
+                    </svg>
+                    Split</button
+                  ><button
+                    class="button small"
+                    id="remove"
+                    title="Remove selected clip (Delete)"
+                  >
+                    Remove clip
+                  </button>
+                </div>
+              </div>
+              <div class="timeline-body">
+                <label class="sr-only" for="scrubber"
+                  >Video playhead in seconds</label
+                ><input
+                  class="scrubber"
+                  id="scrubber"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0"
+                />
+                <div class="timeline-ruler" id="timeline-ruler"></div>
+                <div class="timeline-track" id="timeline-track">
+                  <canvas id="filmstrip" aria-hidden="true"></canvas>
+                  <div id="clips" class="clips"></div>
+                  <div class="playhead" id="playhead" aria-hidden="true"></div>
+                </div>
+                <div class="timeline-hint">
+                  <span
+                    >Drag a clip’s edges to trim. Split to remove a
+                    section.</span
+                  ><span><kbd>Space</kbd> play <kbd>S</kbd> split</span>
+                </div>
+                <div
+                  class="clip-list"
+                  id="clip-list"
+                  aria-label="Kept clips"
+                ></div>
+                <div class="trim-fields">
+                  <span id="selected-label" class="selected-label">Clip 1</span>
+                  <label
+                    >In
+                    <span class="number-with-unit"
+                      ><input
+                        id="clip-in"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        aria-label="Clip in, seconds"
+                      /><span>s</span></span
+                    ></label
+                  >
+                  <label
+                    >Out
+                    <span class="number-with-unit"
+                      ><input
+                        id="clip-out"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        aria-label="Clip out, seconds"
+                      /><span>s</span></span
+                    ></label
+                  >
+                  <button
+                    class="text-button"
+                    id="set-in"
+                    title="Set in at playhead (I)"
+                  >
+                    Set in here</button
+                  ><button
+                    class="text-button"
+                    id="set-out"
+                    title="Set out at playhead (O)"
+                  >
+                    Set out here
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="inspector" aria-label="Edit settings">
+            <div class="inspector-actions" aria-label="Edit actions">
+              <div class="history-buttons">
+                <button
+                  class="button icon-button"
+                  id="undo"
+                  aria-label="Undo edit"
+                  title="Undo (⌘/Ctrl Z)"
+                  disabled
+                >
+                  ↶</button
+                ><button
+                  class="button icon-button"
+                  id="redo"
+                  aria-label="Redo edit"
+                  title="Redo (⌘/Ctrl Shift Z)"
+                  disabled
+                >
+                  ↷
+                </button>
+              </div>
+              <button class="button" id="reset" disabled>Reset edits</button>
+            </div>
+            <div class="layout-picker">
+              <span class="field-label">Layout</span>
+              <div
+                class="layout-buttons"
+                role="group"
+                aria-label="Region layout"
+              >
+                <button
+                  class="button"
+                  id="layout-one-region"
+                  aria-pressed="true"
+                >
+                  One Region
+                </button>
+                <button
+                  class="button"
+                  id="layout-two-regions"
+                  aria-pressed="false"
+                >
+                  Two Regions
+                </button>
+              </div>
+            </div>
+            <section class="inspector-section" id="crop-settings">
+              <div class="panel-heading">
+                <h2 id="crop-heading">Crop</h2>
+                <button class="text-button" id="reset-crop">Reset crop</button>
+              </div>
+              <div id="single-crop-options">
+                <label class="field-label" for="aspect">Aspect ratio</label>
+                <select id="aspect" class="control">
+                  <option value="free">Freeform</option>
+                  <option value="original">Original</option>
+                  <option value="1.7777777777777777">16:9 · Landscape</option>
+                  <option value="0.5625">9:16 · Portrait</option>
+                  <option value="1">1:1 · Square</option>
+                  <option value="0.8">4:5 · Social</option>
+                  <option value="1.3333333333333333">4:3 · Classic</option>
+                </select>
+                <p class="field-hint">
+                  Drag the frame to reposition. Pull a corner to resize.
+                </p>
+              </div>
+              <div id="region-selector" hidden>
+                <div class="region-selection-buttons">
+                  <button
+                    class="button small region-one"
+                    id="select-region-1"
+                    aria-pressed="true"
+                  >
+                    Region 1
+                  </button>
+                  <button
+                    class="button small region-two"
+                    id="select-region-2"
+                    aria-pressed="false"
+                  >
+                    Region 2
+                  </button>
+                </div>
+                <p class="field-hint">
+                  Use Draw 1 and Draw 2 on the source to select your two areas.
+                </p>
+              </div>
+              <details id="source-bounds" open>
+                <summary id="source-bounds-label" hidden>Source bounds</summary>
+                <div class="crop-fields">
+                  <label
+                    >Width
+                    <span class="number-with-unit"
+                      ><input
+                        id="crop-width"
+                        type="number"
+                        step="2"
+                        min="2"
+                      /><span>px</span></span
+                    ></label
+                  >
+                  <label
+                    >Height
+                    <span class="number-with-unit"
+                      ><input
+                        id="crop-height"
+                        type="number"
+                        step="2"
+                        min="2"
+                      /><span>px</span></span
+                    ></label
+                  >
+                  <label
+                    >Left
+                    <span class="number-with-unit"
+                      ><input id="crop-x" type="number" step="2" min="0" /><span
+                        >px</span
+                      ></span
+                    ></label
+                  >
+                  <label
+                    >Top
+                    <span class="number-with-unit"
+                      ><input id="crop-y" type="number" step="2" min="0" /><span
+                        >px</span
+                      ></span
+                    ></label
+                  >
+                </div>
+              </details>
+            </section>
+            <section class="inspector-section" id="composition-settings" hidden>
+              <div class="panel-heading">
+                <h2>Output canvas</h2>
+                <button class="text-button" id="stack-regions">
+                  Reapply stack
+                </button>
+              </div>
+              <label class="field-label" for="output-aspect"
+                >Aspect ratio</label
+              >
+              <select class="control" id="output-aspect"></select>
+              <div class="stack-settings">
+                <span class="field-label">Stacking</span>
+                <div
+                  class="layout-buttons"
+                  role="group"
+                  aria-label="Stacking direction"
+                >
+                  <button
+                    class="button small"
+                    id="stack-vertical"
+                    aria-pressed="true"
+                  >
+                    Vertical
+                  </button>
+                  <button
+                    class="button small"
+                    id="stack-horizontal"
+                    aria-pressed="false"
+                  >
+                    Horizontal
+                  </button>
+                </div>
+                <label
+                  class="field-label stack-gap-label"
+                  id="stack-gap-label"
+                  for="stack-gap"
+                  >Vertical gap</label
+                >
+                <div class="scale-controls">
+                  <input
+                    id="stack-gap-slider"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="2"
+                    value="0"
+                    aria-label="Gap between regions in output pixels"
+                  />
+                  <span class="number-with-unit"
+                    ><input
+                      id="stack-gap"
+                      type="number"
+                      min="0"
+                      step="2"
+                      value="0"
+                    /><span>px</span></span
+                  >
+                </div>
+              </div>
+              <div class="output-size-field">
+                <label class="field-label" for="region-scale"
+                  >Selected region size</label
+                >
+                <div class="scale-controls">
+                  <input
+                    id="region-scale-slider"
+                    type="range"
+                    min="1"
+                    max="100"
+                    step="1"
+                    value="100"
+                    aria-label="Selected region size percentage"
+                  />
+                  <span class="number-with-unit"
+                    ><input
+                      id="region-scale"
+                      type="number"
+                      min="1"
+                      max="100"
+                      step="1"
+                      value="100"
+                    /><span>%</span></span
+                  >
+                </div>
+                <p class="field-hint">
+                  100% is the size selected in the source. Regions keep their
+                  proportions.
+                </p>
+              </div>
+              <div class="crop-fields">
+                <label
+                  >Left
+                  <span class="number-with-unit"
+                    ><input
+                      id="region-output-x"
+                      type="number"
+                      min="0"
+                      step="2"
+                    /><span>px</span></span
+                  ></label
+                >
+                <label
+                  >Top
+                  <span class="number-with-unit"
+                    ><input
+                      id="region-output-y"
+                      type="number"
+                      min="0"
+                      step="2"
+                    /><span>px</span></span
+                  ></label
+                >
+              </div>
+            </section>
+            <details
+              class="inspector-section appearance-settings"
+              id="composition-appearance"
+              hidden
+            >
+              <summary>Background &amp; frame</summary>
+              <label class="field-label" for="background-color"
+                >Canvas color</label
+              >
+              <div class="color-control">
+                <input
+                  id="background-color"
+                  type="color"
+                  value="#000000"
+                /><span id="background-color-label">#000000</span>
+              </div>
+              <div class="background-image-actions">
+                <button id="choose-background" class="button small">
+                  Choose image
+                </button>
+                <input
+                  id="background-image"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label="Upload background image"
+                  hidden
+                />
+                <button class="text-button" id="remove-background" hidden>
+                  Remove image
+                </button>
+              </div>
+              <p class="field-hint" id="background-name" role="status">
+                PNG, JPG or WebP. The image fills the canvas.
+              </p>
+              <label class="field-label" for="frame-target">Frame</label>
+              <select id="frame-target" class="control">
+                <option value="none">No frame</option>
+                <option value="regions">Around video regions</option>
+                <option value="canvas">Around the canvas</option>
+              </select>
+              <div class="crop-fields frame-options" id="frame-options" hidden>
+                <label for="frame-color"
+                  >Color<input id="frame-color" type="color" value="#ffffff"
+                /></label>
+                <label
+                  >Thickness<span class="number-with-unit"
+                    ><input
+                      id="frame-width"
+                      type="number"
+                      min="1"
+                      max="64"
+                      step="1"
+                      value="8"
+                    /><span>px</span></span
+                  ></label
+                >
+              </div>
+            </details>
+            <section class="inspector-section export-section">
+              <div class="panel-heading">
+                <h2>Export</h2>
+                <span class="format-tag">MP4</span>
+              </div>
+              <label for="output-name" class="field-label">File name</label
+              ><input
+                id="output-name"
+                class="control"
+                spellcheck="false"
+                autocomplete="off"
+                value=""
+              />
+              <p class="field-hint">Saved to <code>data/output/</code></p>
+              <label class="audio-option"
+                ><input id="keep-audio" type="checkbox" checked /> Keep original
+                audio</label
+              >
+              <dl class="export-details">
+                <div>
+                  <dt>Resolution</dt>
+                  <dd id="output-resolution"></dd>
+                </div>
+                <div>
+                  <dt>Duration</dt>
+                  <dd id="output-duration"></dd>
+                </div>
+                <div>
+                  <dt>Encoding</dt>
+                  <dd>H.264 <span id="audio-encoding">+ AAC</span></dd>
+                </div>
+              </dl>
+              <button class="button primary export-button" id="export-button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3v12m-4-4 4 4 4-4M5 15v5h14v-5" />
+                </svg>
+                Export MP4
+              </button>
+              <div class="export-progress" id="export-progress" hidden>
+                <div>
+                  <span id="export-status" role="status" aria-live="polite"
+                    >Exporting video…</span
+                  ><span id="progress-label">0%</span>
+                </div>
+                <progress
+                  id="progress-bar"
+                  max="1"
+                  value="0"
+                  aria-label="Export progress"
+                ></progress>
+              </div>
+              <div
+                id="export-result"
+                class="export-result"
+                role="status"
+                hidden
+              >
+                <strong>Video exported</strong><span id="export-file"></span
+                ><a id="download" class="text-button" download
+                  >Download MP4 <span aria-hidden="true">↓</span></a
+                >
+              </div>
+            </section>
+            <p class="inspector-note">
+              Edits are non-destructive.<br />Your source video stays as it is.
+            </p>
+          </aside>
+        </div>
+        <footer class="statusbar">
+          <span id="workspace-status">Ready when you are</span
+          ><span
+            >Video Chops Studio <span class="status-separator">/</span> Local
+            editor</span
+          >
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "entry": [
+    "src/lib.ts",
+    "src/web/app.ts",
+    "test/**/*.test.ts",
+    "test/**/*.test-d.ts",
+    "arch.rules.ts"
+  ],
+  "project": ["src/**/*.ts", "test/**/*.ts"],
+  "ignoreBinaries": ["ffmpeg"],
+  "ignoreDependencies": [
+    "@arethetypeswrong/cli",
+    "dependency-cruiser",
+    "publint"
+  ]
+}
