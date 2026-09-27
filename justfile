@@ -92,9 +92,9 @@ help:
     @printf "  %-40s %s\n" "help" "Show this help message"
     @echo ""
     @printf "\033[0;33mRun & Build:\033[0m\n"
-    @printf "  %-40s %s\n" "studio" "Start the editor if it is not running, then open it"
+    @printf "  %-40s %s\n" "run" "Start the editor if it is not running, then open it"
     @printf "  %-40s %s\n" "stop" "Stop the running editor"
-    @printf "  %-40s %s\n" "run <args>" "Run the CLI from source (e.g. just run --help)"
+    @printf "  %-40s %s\n" "cli <args>" "Run the CLI from source (e.g. just cli --help)"
     @printf "  %-40s %s\n" "build" "Compile production JavaScript"
     @echo ""
     @printf "\033[0;33mCode Quality:\033[0m\n"
@@ -129,18 +129,19 @@ init: check
     @echo ""
 
 
-run +ARGS:
+cli +ARGS:
     @echo ""
     @printf "\033[34m=== Running CLI from Source ===\033[0m\n"
     @npm run --silent cli -- {{ARGS}}
-    @printf "\033[32m✓ run completed successfully\033[0m\n"
+    @printf "\033[32m✓ cli completed successfully\033[0m\n"
     @echo ""
 
 STUDIO_URL := "http://127.0.0.1:4310"
 
-studio:
+run:
     @echo ""
     @printf "\033[34m=== Starting Video Chops Studio ===\033[0m\n"
+    @mkdir -p data/input data/output
     @if curl --silent --fail --max-time 2 "{{STUDIO_URL}}/api/health" >/dev/null; then \
         printf "  Already running at %s\n" "{{STUDIO_URL}}"; \
     else \
