@@ -99,6 +99,10 @@ export class BrowserEventTarget {
     )
   }
 
+  listenerCount(type: string): number {
+    return this.listeners.get(type)?.length ?? 0
+  }
+
   dispatchEvent(event: Event | BrowserEvent): boolean {
     const browserEvent = event as BrowserEvent
     browserEvent.target ??= this
@@ -153,6 +157,7 @@ export class BrowserElement extends BrowserEventTarget {
   download = ''
   clientWidth = 960
   clientHeight = 540
+  boundsLeft = 0
   private content = ''
 
   constructor(tagName: string) {
@@ -266,11 +271,11 @@ export class BrowserElement extends BrowserEventTarget {
           ? styledHeight
           : this.clientHeight
     return {
-      x: 0,
+      x: this.boundsLeft,
       y: 0,
-      left: 0,
+      left: this.boundsLeft,
       top: 0,
-      right: width,
+      right: this.boundsLeft + width,
       bottom: height,
       width,
       height,

@@ -7,6 +7,10 @@
 # 5. Every recipe ends with a clear success or failure status.
 # =============================================================================
 
+# Query pack pin for the local CodeQL analysis (code-codeql / code-codeql-sync).
+# Bump only together with synchronized pack download: see code-codeql-sync.
+codeql_pack_version := "2.4.7"
+
 _default:
     @just help
 
@@ -110,7 +114,8 @@ help:
     @printf "  %-40s %s\n" "code-architecture" "Check import boundaries with dependency-cruiser"
     @printf "  %-40s %s\n" "code-architecture-deep" "Check deep architecture rules with ts-archunit"
     @printf "  %-40s %s\n" "code-package" "Check package structure with publint, attw, and npm pack"
-    @printf "  %-40s %s\n" "code-codeql" "Run local CodeQL data-flow analysis"
+    @printf "  %-40s %s\n" "code-codeql" "Run local CodeQL data-flow analysis (offline)"
+    @printf "  %-40s %s\n" "code-codeql-sync" "Prefetch CodeQL query packs once (needs network)"
     @echo ""
     @printf "\033[0;33mCI & Testing:\033[0m\n"
     @printf "  %-40s %s\n" "test" "Run unit, property, type, CLI, and package tests"
@@ -296,15 +301,69 @@ code-package: build
     @echo ""
 
 code-codeql:
-    @echo ""
-    @printf "\033[34m=== Running CodeQL Data-Flow Analysis ===\033[0m\n"
-    @rm -rf .codeql-db
-    @mkdir -p reports
-    @codeql database create .codeql-db --language=javascript-typescript --source-root=. --codescanning-config=config/codeql/config.yml --overwrite --verbosity=warnings
-    @codeql database analyze .codeql-db codeql/javascript-queries:codeql-suites/javascript-security-extended.qls --format=sarif-latest --output=reports/codeql.sarif --download --verbosity=warnings
-    @node -e 'const sarif = JSON.parse(require("node:fs").readFileSync("reports/codeql.sarif", "utf8")); const results = sarif.runs.flatMap((run) => run.results); for (const result of results) { const location = result.locations?.[0]?.physicalLocation; console.error(`${result.ruleId}: ${result.message.text} (${location?.artifactLocation?.uri}:${location?.region?.startLine})`); } if (results.length > 0) { console.error(`\x1b[31m✗ CodeQL reported ${results.length} finding(s)\x1b[0m`); process.exit(1); }'
-    @printf "\033[32m✓ code-codeql completed successfully\033[0m\n"
-    @echo ""
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo ""
+    printf "\033[34m=== Running CodeQL Data-Flow Analysis ===\033[0m\n"
+    pack_dir="$HOME/.codeql/packages/codeql/javascript-queries/{{codeql_pack_version}}"
+    if [ ! -f "$pack_dir/codeql-pack.lock.yml" ] || [ ! -d "$pack_dir/.codeql/libraries" ] || [ ! -d "$HOME/.codeql/packages/codeql/javascript-all" ]; then \
+        printf "\033[31m✗ Error: CodeQL query packs are not cached locally\033[0m\n"; \
+        printf "  Run: just code-codeql-sync  (requires network; needs running once per machine)\n"; \
+        echo ""; \
+        exit 1; \
+    fi
+    rm -rf .codeql-db
+    mkdir -p reports
+    ram_mb=$(node -p 'Math.floor(require("node:os").totalmem() * 3 / 4 / 1024 / 1024)')
+    codeql database create .codeql-db \
+        --language=javascript-typescript \
+        --source-root=src \
+        --threads=8 \
+        --overwrite \
+        --verbosity=warnings
+    codeql database analyze .codeql-db \
+        "codeql/javascript-queries@{{codeql_pack_version}}:codeql-suites/javascript-security-extended.qls" \
+        --format=sarif-latest \
+        --output=reports/codeql.sarif \
+        --threads=8 \
+        --ram="$ram_mb" \
+        --verbosity=warnings
+    node -e 'const sarif = JSON.parse(require("node:fs").readFileSync("reports/codeql.sarif", "utf8")); const results = sarif.runs.flatMap((run) => run.results); for (const result of results) { const location = result.locations?.[0]?.physicalLocation; console.error(`${result.ruleId}: ${result.message.text} (src/${location?.artifactLocation?.uri}:${location?.region?.startLine})`); } if (results.length > 0) { console.error(`\x1b[31m✗ CodeQL reported ${results.length} finding(s)\x1b[0m`); process.exit(1); }'
+    printf "\033[32m✓ code-codeql completed successfully\033[0m\n"
+    echo ""
+
+code-codeql-sync:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo ""
+    printf "\033[34m=== Prefetching CodeQL Query Packs ===\033[0m\n"
+    mkdir -p "$HOME/.codeql"
+    pack_dir="$HOME/.codeql/packages/codeql/javascript-queries/{{codeql_pack_version}}"
+    pack_locked="$pack_dir/codeql-pack.lock.yml"
+    deps_cached="$HOME/.codeql/packages/codeql/javascript-all"
+    if [ -f "$pack_locked" ] && [ -d "$pack_dir/.codeql/libraries" ] && [ -d "$deps_cached" ]; then \
+        printf "  query packs already cached in %s\n" "$HOME/.codeql/packages"; \
+        printf "\033[32m✓ code-codeql-sync completed successfully\033[0m\n"; \
+        echo ""; \
+        exit 0; \
+    fi
+    codeql pack download codeql/javascript-queries@{{codeql_pack_version}}
+    dependencies=$(sed -n '/^dependencies:/,/^[a-z][a-z]*:/p' "$pack_dir/qlpack.yml" \
+        | grep 'codeql/' \
+        | sed 's/^ *//; s/: *@*/@/; s/- *uses: //' \
+        | tr -d '"')
+    if [ -z "$dependencies" ]; then \
+        printf "\033[31m✗ Error: unable to read pack dependencies from %s\033[0m\n" "$pack_dir/qlpack.yml"; \
+        echo ""; \
+        exit 1; \
+    fi
+    # The dependency list must split into separate pack specs.
+    # shellcheck disable=SC2086
+    codeql pack download $dependencies
+    rm -f "$pack_locked"
+    codeql pack install "$pack_dir"
+    printf "\033[32m✓ code-codeql-sync completed successfully\033[0m\n"
+    echo ""
 
 test: build
     @echo ""
