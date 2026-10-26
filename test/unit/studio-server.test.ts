@@ -355,6 +355,7 @@ describe('video studio server', () => {
       crop: { x: 4, y: 4, width: 48, height: 32 },
       outputName: 'edited.mp4',
       muted: false,
+      overwrite: false,
     }
     const response = await fetch(`${studio.url}/api/exports`, {
       method: 'POST',

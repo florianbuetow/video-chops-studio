@@ -1,7 +1,15 @@
 import { spawn } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { constants } from 'node:fs'
-import { access, link, mkdir, realpath, stat, unlink } from 'node:fs/promises'
+import {
+  access,
+  link,
+  mkdir,
+  realpath,
+  rename,
+  stat,
+  unlink,
+} from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 import {
@@ -150,6 +158,19 @@ async function publishNoReplace(
   await removeTemporary(temporaryPath)
 }
 
+async function publishReplacing(
+  temporaryPath: string,
+  finalPath: string,
+): Promise<void> {
+  try {
+    await rename(temporaryPath, finalPath)
+  } catch (error) {
+    throw new VideoRenderError(`could not publish output: ${finalPath}`, {
+      cause: error,
+    })
+  }
+}
+
 export async function renderVideo(
   inputDirectory: string,
   outputDirectory: string,
@@ -177,23 +198,27 @@ export async function renderVideo(
   await mkdir(outputDirectory, { recursive: true })
   const outputRoot = await realpath(outputDirectory)
   const outputPath = resolve(outputRoot, validated.outputName)
-  try {
-    await access(outputPath, constants.F_OK)
-    throw new VideoRenderError(`output already exists: ${validated.outputName}`)
-  } catch (error) {
-    if (error instanceof VideoRenderError) {
-      throw error
-    }
-    if (
-      typeof error !== 'object' ||
-      error === null ||
-      !('code' in error) ||
-      error.code !== 'ENOENT'
-    ) {
+  if (!validated.overwrite) {
+    try {
+      await access(outputPath, constants.F_OK)
       throw new VideoRenderError(
-        `cannot inspect output path: ${validated.outputName}`,
-        { cause: error },
+        `output already exists: ${validated.outputName}`,
       )
+    } catch (error) {
+      if (error instanceof VideoRenderError) {
+        throw error
+      }
+      if (
+        typeof error !== 'object' ||
+        error === null ||
+        !('code' in error) ||
+        error.code !== 'ENOENT'
+      ) {
+        throw new VideoRenderError(
+          `cannot inspect output path: ${validated.outputName}`,
+          { cause: error },
+        )
+      }
     }
   }
 
@@ -215,7 +240,11 @@ export async function renderVideo(
       duration,
       onProgress,
     )
-    await publishNoReplace(temporaryPath, outputPath)
+    if (validated.overwrite) {
+      await publishReplacing(temporaryPath, outputPath)
+    } else {
+      await publishNoReplace(temporaryPath, outputPath)
+    }
   } catch (error) {
     try {
       await removeTemporary(temporaryPath)

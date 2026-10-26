@@ -25,6 +25,7 @@ const edit = {
   crop: { x: 0, y: 0, width: 640, height: 480 },
   outputName: 'composition.mp4',
   muted: false,
+  overwrite: false,
   composition: {
     width: 600,
     height: 600,

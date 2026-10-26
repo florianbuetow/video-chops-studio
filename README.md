@@ -25,7 +25,7 @@ Put videos (MP4, MOV, M4V, WebM, MKV, AVI) in `data/input/` and click **Refresh 
 4. **Cut:** click **Split** at the start and end of an unwanted section, select it, and click **Remove clip**. **Skip removed sections** previews the cuts.
 5. Choose a file name and whether to keep audio, then click **Export MP4**.
 
-Exports use the source resolution and never overwrite an existing file or modify the source. Edits and undo history last until the page reloads.
+Exports use the source resolution and never modify the source. If the output file already exists, the studio asks before overwriting it. Edits and undo history last until the page reloads.
 
 ## Combine two video regions
 

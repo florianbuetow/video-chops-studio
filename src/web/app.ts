@@ -20,7 +20,7 @@ import {
   updateRegionCrop,
   type StackDirection,
 } from './composition.js'
-import { api, create, element, InterfaceError } from './dom.js'
+import { api, create, element, exists, InterfaceError } from './dom.js'
 import {
   aspectCrop,
   even,
@@ -763,7 +763,7 @@ async function exportVideo(): Promise<void> {
   element('progress-bar', 'progress').value = 0
   element('progress-label', 'span').textContent = '0%'
   const composition = currentComposition()
-  const edit: EditRequest = {
+  const edit: Omit<EditRequest, 'overwrite'> = {
     source: metadata.name,
     segments: structuredClone(draft.segments),
     crop: { ...draft.crop },
@@ -775,7 +775,18 @@ async function exportVideo(): Promise<void> {
   }
   renderTimeline()
   try {
-    const started = await api<{ id: string }>('/api/exports', edit)
+    const overwrite = await exists(
+      `/api/output?name=${encodeURIComponent(edit.outputName)}`,
+    )
+    if (
+      overwrite &&
+      !window.confirm(`${edit.outputName} already exists. Overwrite it?`)
+    ) {
+      element('export-progress', 'div').hidden = true
+      return
+    }
+    const request: EditRequest = { ...edit, overwrite }
+    const started = await api<{ id: string }>('/api/exports', request)
     let job = await api<ExportJob>(`/api/exports/${started.id}`)
     while (job.status === 'running') {
       element('progress-bar', 'progress').value = job.progress

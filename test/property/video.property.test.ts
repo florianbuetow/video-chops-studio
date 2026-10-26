@@ -66,6 +66,7 @@ describe('video edit properties', () => {
               crop: { x: 0, y: 0, width: 640, height: 480 },
               outputName: 'result.mp4',
               muted: false,
+              overwrite: false,
             },
             metadata,
           )

@@ -1,6 +1,12 @@
 import * as testFramework from 'vitest'
 
-import { api, create, element, InterfaceError } from '../../src/web/dom.js'
+import {
+  api,
+  create,
+  element,
+  exists,
+  InterfaceError,
+} from '../../src/web/dom.js'
 import { BrowserFixture } from '../helpers/browser-dom.js'
 
 const { describe, expect, it, vi } = testFramework
@@ -74,5 +80,20 @@ describe('browser DOM helpers', () => {
         }),
     )
     await expect(api('/api/failure')).rejects.toThrow('Request failed (503).')
+  })
+
+  it('checks existence with an uncached HEAD request', async () => {
+    fixture()
+    const fetchMock = vi.fn(
+      async (path: string) =>
+        new Response(null, { status: path === '/present' ? 200 : 404 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(exists('/present')).resolves.toBe(true)
+    await expect(exists('/absent')).resolves.toBe(false)
+    expect(fetchMock).toHaveBeenCalledWith('/present', {
+      method: 'HEAD',
+      cache: 'no-store',
+    })
   })
 })

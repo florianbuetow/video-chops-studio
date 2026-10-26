@@ -51,3 +51,8 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
   }
   return result as T
 }
+
+export async function exists(path: string): Promise<boolean> {
+  const response = await fetch(path, { method: 'HEAD', cache: 'no-store' })
+  return response.ok
+}

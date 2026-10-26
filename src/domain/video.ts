@@ -51,6 +51,7 @@ export interface EditRequest {
   readonly crop: Crop
   readonly outputName: string
   readonly muted: boolean
+  readonly overwrite: boolean
   readonly composition?: Composition
 }
 
@@ -327,7 +328,14 @@ export function validateEdit(
   if (!isRecord(edit)) {
     throw new VideoValidationError('edit must be an object')
   }
-  const editKeys = ['source', 'segments', 'crop', 'outputName', 'muted']
+  const editKeys = [
+    'source',
+    'segments',
+    'crop',
+    'outputName',
+    'muted',
+    'overwrite',
+  ]
   requireExactKeys(
     edit,
     Object.hasOwn(edit, 'composition')
@@ -345,6 +353,9 @@ export function validateEdit(
   }
   if (typeof edit['muted'] !== 'boolean') {
     throw new VideoValidationError('muted must be a boolean')
+  }
+  if (typeof edit['overwrite'] !== 'boolean') {
+    throw new VideoValidationError('overwrite must be a boolean')
   }
   if (
     !Array.isArray(edit['segments']) ||
@@ -404,6 +415,7 @@ export function validateEdit(
     crop,
     outputName,
     muted: edit['muted'],
+    overwrite: edit['overwrite'],
     ...(composition === undefined ? {} : { composition }),
   }
 }

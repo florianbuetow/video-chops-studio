@@ -28,11 +28,23 @@ const edit: EditRequest = {
   crop: { x: 10, y: 20, width: 800, height: 600 },
   outputName: 'edited.mp4',
   muted: false,
+  overwrite: false,
 }
 
 describe('validateEdit', () => {
   it('accepts a strict valid edit and preserves its values', () => {
     expect(validateEdit(edit, metadata)).toEqual(edit)
+    expect(validateEdit({ ...edit, overwrite: true }, metadata).overwrite).toBe(
+      true,
+    )
+  })
+
+  it('requires an explicit overwrite decision', () => {
+    const { overwrite, ...withoutOverwrite } = edit
+    expect(overwrite).toBe(false)
+    expect(() => validateEdit(withoutOverwrite, metadata)).toThrow(
+      'edit must contain exactly',
+    )
   })
 
   it('accepts exact inclusive boundaries and touching segments', () => {
@@ -106,6 +118,7 @@ describe('validateEdit', () => {
     [{ ...edit, source: 'bad\nname.mp4' }, 'source must be a single file name'],
     [{ ...edit, outputName: '.hidden.mp4' }, 'non-hidden .mp4'],
     [{ ...edit, muted: 'false' }, 'muted must be a boolean'],
+    [{ ...edit, overwrite: 'true' }, 'overwrite must be a boolean'],
     [{ ...edit, segments: 'all' }, 'segments must contain between'],
     [
       { ...edit, segments: new Array(129).fill({ start: 0, end: 1 }) },

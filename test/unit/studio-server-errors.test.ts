@@ -152,6 +152,7 @@ const validEdit = {
   crop: { x: 0, y: 0, width: 320, height: 240 },
   outputName: 'result.mp4',
   muted: false,
+  overwrite: false,
 } as const
 
 async function postExport(

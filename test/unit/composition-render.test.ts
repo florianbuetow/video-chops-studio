@@ -114,6 +114,7 @@ describe('composition rendering', () => {
           crop: { x: 0, y: 0, width: 160, height: 120 },
           outputName: 'result.mp4',
           muted: false,
+          overwrite: false,
           composition: {
             width: 200,
             height: 120,
@@ -178,6 +179,7 @@ describe('composition rendering', () => {
           crop: { x: 0, y: 0, width: 160, height: 120 },
           outputName: 'canvas-frame.mp4',
           muted: false,
+          overwrite: false,
           composition: {
             width: 200,
             height: 120,

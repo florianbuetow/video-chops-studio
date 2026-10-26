@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdtemp, mkdir, rm, stat } from 'node:fs/promises'
+import { mkdtemp, mkdir, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -72,6 +72,7 @@ describe('renderVideo', () => {
           crop: { x: 20, y: 20, width: 200, height: 100 },
           outputName: 'result.mp4',
           muted: false,
+          overwrite: false,
         },
         (fraction) => progress.push(fraction),
       )
@@ -104,14 +105,73 @@ describe('renderVideo', () => {
         crop: { x: 0, y: 0, width: 320, height: 240 },
         outputName: 'same.mp4',
         muted: true,
+        overwrite: false,
       } as const
       await renderVideo(input, output, request, () => undefined)
       const before = await stat(join(output, 'same.mp4'))
-      await expect(
-        renderVideo(input, output, request, () => undefined),
-      ).rejects.toBeInstanceOf(VideoRenderError)
+      const progress: number[] = []
+      const repeated = renderVideo(input, output, request, (fraction) =>
+        progress.push(fraction),
+      )
+      await expect(repeated).rejects.toBeInstanceOf(VideoRenderError)
+      await expect(repeated).rejects.toThrow('output already exists: same.mp4')
+      expect(progress).toEqual([])
       const after = await stat(join(output, 'same.mp4'))
       expect(after.size).toBe(before.size)
+    })
+  }, 20_000)
+
+  it('replaces an existing export when overwrite is requested', async () => {
+    await withFixture(async ({ input, output }) => {
+      const request = {
+        source: 'source.mp4',
+        segments: [{ start: 0, end: 0.2 }],
+        crop: { x: 0, y: 0, width: 320, height: 240 },
+        outputName: 'same.mp4',
+        muted: true,
+        overwrite: false,
+      } as const
+      await renderVideo(input, output, request, () => undefined)
+      const result = await renderVideo(
+        input,
+        output,
+        {
+          ...request,
+          crop: { x: 0, y: 0, width: 160, height: 120 },
+          overwrite: true,
+        },
+        () => undefined,
+      )
+      expect(result.width).toBe(160)
+      const rendered = await probeVideo(output, 'same.mp4')
+      expect(rendered.width).toBe(160)
+      expect(rendered.height).toBe(120)
+      expect(await readdir(output)).toEqual(['same.mp4'])
+    })
+  }, 20_000)
+
+  it('reports a typed failure when an existing output cannot be replaced', async () => {
+    await withFixture(async ({ input, output }) => {
+      await mkdir(join(output, 'folder.mp4'), { recursive: true })
+      const replacing = renderVideo(
+        input,
+        output,
+        {
+          source: 'source.mp4',
+          segments: [{ start: 0, end: 0.2 }],
+          crop: { x: 0, y: 0, width: 320, height: 240 },
+          outputName: 'folder.mp4',
+          muted: true,
+          overwrite: true,
+        },
+        () => undefined,
+      )
+      await expect(replacing).rejects.toBeInstanceOf(VideoRenderError)
+      await expect(replacing).rejects.toThrow('could not publish output:')
+      await expect(replacing).rejects.toMatchObject({
+        cause: { code: 'EISDIR' },
+      })
+      expect(await readdir(output)).toEqual(['folder.mp4'])
     })
   }, 20_000)
 
@@ -138,6 +198,7 @@ describe('renderVideo', () => {
           crop: { x: 0, y: 0, width: 320, height: 240 },
           outputName: 'shifted-result.mp4',
           muted: false,
+          overwrite: false,
         },
         () => undefined,
       )

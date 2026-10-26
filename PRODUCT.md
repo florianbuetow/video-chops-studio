@@ -22,7 +22,7 @@ Calm, compact, practical. Carry over the visual language of the adjacent `carous
 
 - Keep the source, preview, timeline, and export settings within one workspace.
 - Show what will be kept before exporting it.
-- Preserve original files and never overwrite an existing export.
+- Preserve original files and never overwrite an existing export without asking.
 - Make precise edits possible with both direct manipulation and numeric inputs.
 - Describe loading, progress, empty states, and failures in plain language.
 

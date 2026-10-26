@@ -554,10 +554,14 @@ export class BrowserFixture {
   readonly document: BrowserDocument
   readonly window: BrowserEventTarget & {
     readonly location: { readonly href: string; reload(): void }
+    confirm(message: string): boolean
   }
   readonly location = { href: 'http://127.0.0.1:43123/', reload: vi.fn() }
   readonly requests: RecordedRequest[] = []
   readonly metadata = new Map<string, VideoMetadata>()
+  readonly outputs = new Set<string>()
+  readonly confirmations: string[] = []
+  confirmAnswer = true
   readonly failingMedia: string[] = []
   readonly failingImages: string[] = []
   files: Array<{ readonly name: string; readonly size: number }> = []
@@ -593,6 +597,10 @@ export class BrowserFixture {
     this.document.fixture = this
     this.window = Object.assign(new BrowserEventTarget(), {
       location: this.location,
+      confirm: (message: string): boolean => {
+        this.confirmations.push(message)
+        return this.confirmAnswer
+      },
     })
     parseElements(this)
     this.installGlobals()
@@ -738,6 +746,10 @@ export class BrowserFixture {
       return this.backgroundUploadError === undefined
         ? json(this.backgroundUpload)
         : json({ error: this.backgroundUploadError }, 400)
+    }
+    if (path.startsWith('/api/output?name=') && method === 'HEAD') {
+      const name = decodeURIComponent(path.slice('/api/output?name='.length))
+      return new Response(null, { status: this.outputs.has(name) ? 200 : 404 })
     }
     if (path === '/api/exports' && method === 'POST') {
       if (this.exportStartError !== undefined) {

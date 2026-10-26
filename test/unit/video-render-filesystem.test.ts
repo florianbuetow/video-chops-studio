@@ -103,6 +103,7 @@ const edit = {
   crop: { x: 0, y: 0, width: 64, height: 64 },
   outputName: 'result.mp4',
   muted: true,
+  overwrite: false,
 } as const
 
 afterEach(() => {
